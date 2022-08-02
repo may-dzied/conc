@@ -28,7 +28,7 @@ pub fn lex(text: String) -> Result<Vec<Token>, String> {
     let mut chars = lex_text.chars();
 
     while let Some(next) = chars.next() {
-        if WHITESPACE.contains(next) && builder.trim().to_string() != String::new() {
+        if WHITESPACE.contains(next) && builder.trim() != "" {
             builder = builder.trim().to_string();
             if builder.starts_with("i8_") {
                 parse_num!(builder, result, i8, I8);
@@ -54,10 +54,16 @@ pub fn lex(text: String) -> Result<Vec<Token>, String> {
                 parse_num!(builder, result, f32, F32);
             } else if builder.starts_with("f64_") {
                 parse_num!(builder, result, f64, F64);
-            } else if builder == String::from("{") {
+            } else if let Ok(val) = builder.parse::<u64>() {
+                result.push(Token::Number(Number::U64(val)));
+                builder = String::new();
+            } else if let Ok(val) = builder.parse::<f64>() {
+                result.push(Token::Number(Number::F64(val)));
+                builder = String::new();
+            } else if builder == "{" {
                 result.push(Token::OpenBracket);
                 builder = String::new();
-            } else if builder == String::from("}") {
+            } else if builder == "}" {
                 result.push(Token::CloseBracket);
                 builder = String::new();
             } else {
@@ -65,10 +71,12 @@ pub fn lex(text: String) -> Result<Vec<Token>, String> {
                 builder = String::new();
             }
         } else if next == '"' {
-            let mut string_char = chars.next().ok_or("String not closed".to_string())?;
+            let mut string_char = chars.next()
+                .ok_or_else(|| "String not closed".to_string())?;
             while string_char != '"' {
                 builder.push(string_char);
-                string_char = chars.next().ok_or("String not closed".to_string())?;
+                string_char = chars.next()
+                    .ok_or_else(|| "String not closed".to_string())?;
             }
             result.push(Token::String(builder));
             builder = String::new();
